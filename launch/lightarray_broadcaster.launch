@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>
+
+  <node pkg="hmiCmd" type="light_broadcaster" name="light_broadcaster" output="screen">
+  <rosparam file = "$(find hmiCmd)/config/lightarray.yaml" command = "load" />
+  </node>
+</launch>

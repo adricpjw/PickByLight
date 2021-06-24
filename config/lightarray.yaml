@@ -1,0 +1,9 @@
+---
+  x_pos: 0.50
+  y_pos: -0.30
+  z_pos: 0.30
+  roll: -45
+  frame_id: light_array
+  origin_frame: base_link
+  timer_rate: 5
+  

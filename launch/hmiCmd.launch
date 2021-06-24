@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>
+
+  <node pkg="hmiCmd" type="hmiCmd" name="hmiCmd" output="screen">
+  <rosparam file = "$(find hmiCmd)/config/params.yaml" command = "load" />
+  </node>
+</launch>

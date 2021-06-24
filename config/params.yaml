@@ -1,0 +1,8 @@
+---
+  lightcmd_topic: /lightcmd
+  lightarray_frame: light_array
+  origin_frame: world
+  num_lights: 2
+  timer_rate: 5
+  y_tolerance : 0.1
+  
