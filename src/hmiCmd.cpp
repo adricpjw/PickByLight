@@ -3,7 +3,7 @@
 
 hmiCtrl::hmiCtrl()
     : nh_(), private_nh_("~"), tfBuffer_(ros::Duration(5)),
-      tflistener_(tfBuffer_), marker_(), activeObjects_({}) {
+      tflistener_(tfBuffer_), marker_(), activeObjects_({}),ignoredObjects_(0) {
   initParams();
   initROSFunctions();
   setupBoundaries();
@@ -14,7 +14,8 @@ void hmiCtrl::initROSFunctions() {
   lightcmd_pub_ = nh_.advertise<std_msgs::Int32>(lightcmd_topic_, 10);
   timer_ =
       nh_.createTimer(ros::Duration(1 / timer_rate_), &hmiCtrl::timerCB, this);
-  objDetected_sub_ = nh_.subscribe(objDetected_sub_topic_, 1, &hmiCtrl::objDetectedCB,this);
+  objDetected_sub_ =
+      nh_.subscribe(objDetected_sub_topic_, 1, &hmiCtrl::objDetectedCB, this);
 }
 
 void hmiCtrl::initParams() {
@@ -23,7 +24,7 @@ void hmiCtrl::initParams() {
   private_nh_.param<std::string>("lightarray_frame", lightarray_frame_,
                                  "light_array");
   private_nh_.param<std::string>("origin_frame", origin_frame_, "/lightcmd");
-  private_nh_.param<std::string>("objDected_sub_topic", objDetected_sub_topic_,
+  private_nh_.param<std::string>("objDetected_sub_topic", objDetected_sub_topic_,
                                  "/activeObjects");
   private_nh_.param<double>("num_lights", num_lights_, 3);
   private_nh_.param<double>("timer_rate", timer_rate_, 5);
@@ -52,6 +53,8 @@ void hmiCtrl::reset() {
   cmd_ = 0;
   allFrames_.clear();
   filteredFrames_.clear();
+  activeObjects_.clear();
+  ignoredObjects_ = 0;
 }
 void hmiCtrl::getFrames() {
   tfBuffer_._getFrameStrings(allFrames_);
@@ -70,38 +73,38 @@ void hmiCtrl::filterbyPrefix(vpsi &frames) {
   }
 }
 
-void hmiCtrl::filterbyY(vpsi &frames) {
+void hmiCtrl::filterbyY(vecWaste &frames) {
   for (auto &frame : frames) {
-    if (frame.second == 0)
+    if (ignoredObjects_ & (1 << (frame.obj_num % (__SIZEOF_LONG_LONG__ * 8))))
       continue;
     try {
       transformStamped_ =
-          tfBuffer_.lookupTransform(origin_frame_, frame.first, ros::Time(0));
+          tfBuffer_.lookupTransform(origin_frame_, frame.obj_id, ros::Time(0));
     } catch (tf2::ExtrapolationException &e) {
-      frame.second = 0;
       continue;
     } catch (tf2::LookupException &e) {
-      frame.second = 0;
       continue;
     }
     if (fabs(transformStamped_.transform.translation.y - y_boundary_) >
-        y_tolerance_)
-      frame.second = 0;
+        y_tolerance_) {
+          ignoredObjects_ |= (1 << (frame.obj_num  % (__SIZEOF_LONG_LONG__ * 8)));
+        }
+      
   }
 }
 
-void hmiCtrl::filterbyX(vpsi &frames) {
+void hmiCtrl::filterbyX(vecWaste &frames) {
   for (auto &frame : frames) {
-    if (frame.second == 0)
+    if (ignoredObjects_ & (1 << (frame.obj_num% (__SIZEOF_LONG_LONG__ * 8))))
       continue;
     try {
       transformStamped_ =
-          tfBuffer_.lookupTransform(origin_frame_, frame.first, ros::Time(0));
+          tfBuffer_.lookupTransform(origin_frame_, frame.obj_id, ros::Time(0));
     } catch (tf2::ExtrapolationException &e) {
-      frame.second = 0;
+      // ignoredObjects_ &= ~(1 << (frame.obj_num  % (__SIZEOF_LONG_LONG__ * 8)));
       continue;
     } catch (tf2::LookupException &e) {
-      frame.second = 0;
+      // ignoredObjects_ &= ~(1 << (frame.obj_num  % (__SIZEOF_LONG_LONG__ * 8)));
       continue;
     }
 
@@ -115,11 +118,13 @@ void hmiCtrl::filterbyX(vpsi &frames) {
 void hmiCtrl::filterObj() {
   std::chrono::steady_clock::time_point begin =
       std::chrono::steady_clock::now();
-  filterbyPrefix(filteredFrames_);
+  // filterbyPrefix(filteredFrames_);
   std::chrono::steady_clock::time_point mid = std::chrono::steady_clock::now();
-  filterbyY(filteredFrames_);
+  // filterbyY(filteredFrames_);
+  filterbyY(activeObjects_);
   std::chrono::steady_clock::time_point mid2 = std::chrono::steady_clock::now();
-  filterbyX(filteredFrames_);
+  // filterbyX(filteredFrames_);
+  filterbyX(activeObjects_);
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   int time_diff_mid =
       std::chrono::duration_cast<std::chrono::microseconds>(mid - begin)
@@ -153,15 +158,15 @@ void hmiCtrl::addVisualisation(int idx) {
 void hmiCtrl::timerCB(const ros::TimerEvent &) {
   // std::chrono::steady_clock::time_point begin =
   // std::chrono::steady_clock::now(); ROS_INFO("Refreshing containers...");
-  reset();
+  // reset();
   // ROS_INFO("Requesting Objects...");
-  getFrames();
+  // getFrames();
   // std::chrono::steady_clock::time_point mid =
   // std::chrono::steady_clock::now(); ROS_INFO("Filtering Objects...");
-  filterObj();
+  // filterObj();
   // ROS_INFO("Sending command...");
-  if (prevcmd_ != cmd_)
-    sendCmd();
+  // if (prevcmd_ != cmd_)
+  //   sendCmd();
   // std::chrono::steady_clock::time_point end =
   // std::chrono::steady_clock::now(); int time_diff_mid =
   // std::chrono::duration_cast<std::chrono::microseconds>(mid - begin).count();
@@ -172,7 +177,12 @@ void hmiCtrl::timerCB(const ros::TimerEvent &) {
 }
 
 void hmiCtrl::objDetectedCB(const obj_tf::WasteItemArr::ConstPtr &msg) {
+  
+  reset();
   activeObjects_ = msg->objects;
+  filterObj();
+  if (prevcmd_ != cmd_)
+    sendCmd();
 }
 
 int main(int argc, char **argv) {

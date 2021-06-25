@@ -18,6 +18,7 @@
 class hmiCtrl {
 typedef std::pair<std::string,int> psi;
 typedef std::vector<psi> vpsi;
+typedef std::vector<obj_tf::WasteItem> vecWaste;
 const double belt_width_ = 0.50;
 public:
   hmiCtrl();
@@ -38,7 +39,8 @@ private:
   std::string origin_frame_;
   std::string objDetected_sub_topic_;
   std::vector<std::string> allFrames_;
-  std::vector<obj_tf::WasteItem> activeObjects_;
+  vecWaste activeObjects_;
+  long long ignoredObjects_;
   vpsi filteredFrames_;
   double timer_rate_;
   double lower_x_;
@@ -56,9 +58,9 @@ private:
   void setupLights();
 
   void filterObj();
-  void filterbyY(vpsi &frames);
+  void filterbyY(vecWaste &frames);
   void filterbyPrefix(vpsi &frames);
-  void filterbyX(vpsi &frames);
+  void filterbyX(vecWaste &frames);
   void getFrames();
 
   void sendCmd();
