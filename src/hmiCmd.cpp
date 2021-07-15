@@ -115,7 +115,17 @@ void hmiCtrl::filterbyX(vecWaste &frames) {
   }
 }
 
+void hmiCtrl::filterbyType(vecWaste &frames) {
+  for (auto &frame :frames) {
+    if (ignoredObjects_ & (1 << (frame.obj_num% (__SIZEOF_LONG_LONG__ * 8))))
+      continue;
+    if (frame.plastictype == 1) 
+      ignoredObjects_ |= (1 << (frame.obj_num  % (__SIZEOF_LONG_LONG__ * 8)));
+  }
+}
+
 void hmiCtrl::filterObj() {
+  ROS_INFO("Object detected");
   std::chrono::steady_clock::time_point begin =
       std::chrono::steady_clock::now();
   // filterbyPrefix(filteredFrames_);
@@ -124,6 +134,7 @@ void hmiCtrl::filterObj() {
   filterbyY(activeObjects_);
   std::chrono::steady_clock::time_point mid2 = std::chrono::steady_clock::now();
   // filterbyX(filteredFrames_);
+  // filterbyType(activeObjects_);
   filterbyX(activeObjects_);
   std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   int time_diff_mid =
@@ -141,7 +152,9 @@ void hmiCtrl::sendCmd() {
   lightcmd_.data = cmd_;
   lightcmd_pub_.publish(lightcmd_);
   marker_.clearMarkers();
-  marker_.publishMarkers();
+  if (cmd_)
+    marker_.publishMarkers();
+  marker_.clearPoints();
 }
 
 void hmiCtrl::addVisualisation(int idx) {

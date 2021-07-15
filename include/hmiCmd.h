@@ -61,6 +61,7 @@ private:
   void filterbyY(vecWaste &frames);
   void filterbyPrefix(vpsi &frames);
   void filterbyX(vecWaste &frames);
+  void filterbyType(vecWaste &frames);
   void getFrames();
 
   void sendCmd();
