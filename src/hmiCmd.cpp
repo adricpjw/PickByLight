@@ -3,7 +3,8 @@
 
 hmiCtrl::hmiCtrl()
     : nh_(), private_nh_("~"), tfBuffer_(ros::Duration(5)),
-      tflistener_(tfBuffer_), marker_(), activeObjects_({}),ignoredObjects_(0) {
+      tflistener_(tfBuffer_), marker_(), activeObjects_({}),
+      ignoredObjects_(0) {
   initParams();
   initROSFunctions();
   setupBoundaries();
@@ -24,8 +25,8 @@ void hmiCtrl::initParams() {
   private_nh_.param<std::string>("lightarray_frame", lightarray_frame_,
                                  "light_array");
   private_nh_.param<std::string>("origin_frame", origin_frame_, "/lightcmd");
-  private_nh_.param<std::string>("objDetected_sub_topic", objDetected_sub_topic_,
-                                 "/activeObjects");
+  private_nh_.param<std::string>("objDetected_sub_topic",
+                                 objDetected_sub_topic_, "/activeObjects");
   private_nh_.param<double>("num_lights", num_lights_, 3);
   private_nh_.param<double>("timer_rate", timer_rate_, 5);
   private_nh_.param<double>("y_tolerance", y_tolerance_, 0.05);
@@ -87,40 +88,48 @@ void hmiCtrl::filterbyY(vecWaste &frames) {
     }
     if (fabs(transformStamped_.transform.translation.y - y_boundary_) >
         y_tolerance_) {
-          ignoredObjects_ |= (1 << (frame.obj_num  % (__SIZEOF_LONG_LONG__ * 8)));
-        }
-      
+      ignoredObjects_ |= (1 << (frame.obj_num % (__SIZEOF_LONG_LONG__ * 8)));
+    }
   }
 }
 
 void hmiCtrl::filterbyX(vecWaste &frames) {
   for (auto &frame : frames) {
-    if (ignoredObjects_ & (1 << (frame.obj_num% (__SIZEOF_LONG_LONG__ * 8))))
+    if (ignoredObjects_ & (1 << (frame.obj_num % (__SIZEOF_LONG_LONG__ * 8))))
       continue;
     try {
       transformStamped_ =
           tfBuffer_.lookupTransform(origin_frame_, frame.obj_id, ros::Time(0));
     } catch (tf2::ExtrapolationException &e) {
-      // ignoredObjects_ &= ~(1 << (frame.obj_num  % (__SIZEOF_LONG_LONG__ * 8)));
+      // ignoredObjects_ &= ~(1 << (frame.obj_num  % (__SIZEOF_LONG_LONG__ *
+      // 8)));
       continue;
     } catch (tf2::LookupException &e) {
-      // ignoredObjects_ &= ~(1 << (frame.obj_num  % (__SIZEOF_LONG_LONG__ * 8)));
+      // ignoredObjects_ &= ~(1 << (frame.obj_num  % (__SIZEOF_LONG_LONG__ *
+      // 8)));
       continue;
     }
-
-    int idx = ((transformStamped_.transform.translation.x - lower_x_) /
-               diode_coverage_);
-    cmd_ |= (1 << idx);
-    addVisualisation(idx);
+    double x = transformStamped_.transform.translation.x;
+    double width = frame.boundingBox[2];
+    int lower_idx = (x - width/2) < lower_x_ ? 0 : ((x - width/2 - lower_x_) / diode_coverage_);
+    int upper_idx = (x + width/2) < lower_x_ ? 0 : ((x + width/2 - lower_x_) / diode_coverage_);
+    // int idx = x < lower_x_ ? 0 : ((x - lower_x_) / diode_coverage_);
+    
+    std::cout << "x : " << x << ", width = : " << width << std::endl;
+    for (int i = lower_idx; i <= upper_idx; i++) {
+      cmd_ |= (1 << i);
+      addVisualisation(i);
+    }
+    
   }
 }
 
 void hmiCtrl::filterbyType(vecWaste &frames) {
-  for (auto &frame :frames) {
-    if (ignoredObjects_ & (1 << (frame.obj_num% (__SIZEOF_LONG_LONG__ * 8))))
+  for (auto &frame : frames) {
+    if (ignoredObjects_ & (1 << (frame.obj_num % (__SIZEOF_LONG_LONG__ * 8))))
       continue;
-    if (frame.plastictype == 1) 
-      ignoredObjects_ |= (1 << (frame.obj_num  % (__SIZEOF_LONG_LONG__ * 8)));
+    if (frame.plastictype == 1)
+      ignoredObjects_ |= (1 << (frame.obj_num % (__SIZEOF_LONG_LONG__ * 8)));
   }
 }
 
@@ -190,7 +199,7 @@ void hmiCtrl::timerCB(const ros::TimerEvent &) {
 }
 
 void hmiCtrl::objDetectedCB(const obj_tf::WasteItemArr::ConstPtr &msg) {
-  
+
   reset();
   activeObjects_ = msg->objects;
   filterObj();
