@@ -51,6 +51,11 @@ private:
   double num_lights_;
   double diode_coverage_;
   double y_tolerance_;
+  double array_width_;
+  bool XFIL_EN_;
+  bool YFIL_EN_;
+  bool TYPEFIL_EN_;
+
 
   void initParams();
   void initROSFunctions();
@@ -59,7 +64,6 @@ private:
 
   void filterObj();
   void filterbyY(vecWaste &frames);
-  void filterbyPrefix(vpsi &frames);
   void filterbyX(vecWaste &frames);
   void filterbyType(vecWaste &frames);
   void getFrames();

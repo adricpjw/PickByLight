@@ -3,7 +3,13 @@
   objDetected_sub_topic: /activeObjects
   lightarray_frame: light_array
   origin_frame: base_link
-  num_lights: 10
-  timer_rate: 5
-  y_tolerance : 0.15
+  num_lights: 10 # the number of lights mounted
+  timer_rate: 5 # Hz
+  y_tolerance : 0.10 # Distance from object the belt-axis to turn on light (in meters)
+  array_width : 0.44 # Length of laser diodes from end to end (in meters)
+
+  #---- FILTERS ---- #
+  FIL_BY_X : true
+  FIL_BY_Y : true
+  FIL_BY_TYPE : false
   
