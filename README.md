@@ -1,7 +1,7 @@
  
 <a href="https://github.com/adricpjw/PickByLight"><img src="https://i.imgur.com/9UanW2G.png"></a>
 
-# Mission Loader
+# PickByLight
 
 > To load missions in a given sequence 
 
