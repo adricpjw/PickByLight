@@ -15,10 +15,11 @@ hmiCtrl::hmiCtrl()
 
 void hmiCtrl::initROSFunctions() {
   lightcmd_pub_ = nh_.advertise<std_msgs::Int32>(lightcmd_topic_, 10);
-  nh_.subscribe(objDetected_sub_topic_, 1, &hmiCtrl::objDetectedCB, this);
+  objDetected_sub_ = nh_.subscribe(objDetected_sub_topic_, 1, &hmiCtrl::objDetectedCB, this);
 }
 
 void hmiCtrl::initParams() {
+  
   private_nh_.param<std::string>("lightcmd_topic", lightcmd_topic_,
                                  "/lightcmd");
   private_nh_.param<std::string>("lightarray_frame", lightarray_frame_,
@@ -62,23 +63,17 @@ void hmiCtrl::setupLights() { diode_coverage_ = belt_width_ / num_lights_; }
 void hmiCtrl::reset() {
   prevcmd_ = cmd_;
   cmd_ = 0;
-  allFrames_.clear();
-  filteredFrames_.clear();
   activeObjects_.clear();
   ignoredObjects_ = 0;
 }
-void hmiCtrl::getFrames() {
-  tfBuffer_._getFrameStrings(allFrames_);
-  for (auto frame : allFrames_) {
-    filteredFrames_.emplace_back(frame, 1);
-  }
-}
+
 
 
 /*----------- FILTERS ---------*/
 
 
 void hmiCtrl::filterbyY(vecWaste &frames) {
+  // std::cout<< "outer"<<std::endl;
   for (auto &frame : frames) {
     if (ignoredObjects_ & (1 << (frame.obj_num % (__SIZEOF_LONG_LONG__ * 8))))
       continue;
@@ -90,18 +85,27 @@ void hmiCtrl::filterbyY(vecWaste &frames) {
     } catch (tf2::LookupException &e) {
       continue;
     }
-    double length = frame.boundingBox[2];
-    if (fabs(transformStamped_.transform.translation.y - y_boundary_) >
-        (y_tolerance_ + length / 2)) {
+    // std::cout<<"inner" <<std::endl;
+    double height = frame.boundingBox[3];
+    double yPose = transformStamped_.transform.translation.y;
+    // std::cout<< frame.obj_id << " >> yPose : " << yPose<<std::endl;
+    // std::cout<<"Difference : " <<fabs(yPose - y_boundary_) <<std::endl;
+    if (fabs(yPose - y_boundary_) >
+        (y_tolerance_ + height / 2)) {
+          // std::cout <<"ignoring"<<std::endl;
       ignoredObjects_ |= (1 << (frame.obj_num % (__SIZEOF_LONG_LONG__ * 8)));
     }
   }
 }
 
 void hmiCtrl::filterbyX(vecWaste &frames) {
+  
   for (auto &frame : frames) {
+    std::cout<<ignoredObjects_<<std::endl;
     if (ignoredObjects_ & (1 << (frame.obj_num % (__SIZEOF_LONG_LONG__ * 8))))
       continue;
+    // std::cout<<"reaching x filter"<<std::endl;
+
     try {
       transformStamped_ =
           tfBuffer_.lookupTransform(origin_frame_, frame.obj_id, ros::Time(0));
@@ -110,8 +114,9 @@ void hmiCtrl::filterbyX(vecWaste &frames) {
     } catch (tf2::LookupException &e) {
       continue;
     }
+    // std::cout<<"x filter"<<std::endl;
     double x = transformStamped_.transform.translation.x;
-    double width = frame.boundingBox[3];
+    double width = frame.boundingBox[2];
     int lower_idx = (x - width / 2) < lower_x_
                         ? 0
                         : ((x - width / 2 - lower_x_) / diode_coverage_);
@@ -172,7 +177,6 @@ void hmiCtrl::addVisualisation(int idx) {
 /*----------- SUBSCRIBER ---------*/
 
 void hmiCtrl::objDetectedCB(const obj_tf::WasteItemArr::ConstPtr &msg) {
-
   reset();
   activeObjects_ = msg->objects;
   filterObj();
