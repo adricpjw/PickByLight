@@ -1,5 +1,5 @@
  
-<a href="https://github.com/adricpjw/PickByLight"><img src="https://i.imgur.com/9UanW2G.png"></a>
+<a href="https://github.com/adricpjw/PickByLight"><img src="https://i.imgur.com/060HCVy.jpg"></a>
 
 # PickByLight
 
@@ -44,7 +44,24 @@ $ git checkout FinalCameraLightsIntegration
 ---
 ## Usage
 
-### Adjusting the mission sequence
+### Adjusting the ROS Master
+Remember to set the ROS Master properly before launching the node.
+
+A shortcut `setNUCROSM` has already been set in `~/.bashrc` to help automatically setup the ROS Master to connect to smartsurface IP Address. check `/etc/hosts` to make sure the IP address is correct
+
+
+/etc/hosts:
+```bash
+10.10.10.81 smartsurface
+```
+
+~/.bashrc :
+```bash
+alias setNUCROSM='myIP=`hostname -I | cut -f 1 -d " "`; export ROS_MASTER_URI=http://smartsurface:11311; export ROS_HOSTNAME=${myIP}; export ROS_IP=${myIP}'
+```
+
+
+### Adjusting the parameters
 Before launching the PickByLight launch, ensure that the configurations and parameters are in order by navigating to `/config/params.yaml`
 ```yaml
 ---
@@ -61,8 +78,6 @@ Before launching the PickByLight launch, ensure that the configurations and para
   FIL_BY_X : true
   FIL_BY_Y : true
   FIL_BY_TYPE : false
-  
-
 ```
 
 Another config file (`/config/lightarray.yaml`) is also important in determining the position of light array.

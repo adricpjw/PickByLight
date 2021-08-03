@@ -141,7 +141,7 @@ void hmiCtrl::filterbyType(vecWaste &frames) {
 }
 
 void hmiCtrl::filterObj() {
-  ROS_INFO("Object detected");
+  // ROS_INFO("Object detected");
   /*------ SETTING UP FILTERS ---- */
 
   if (YFIL_EN_)
